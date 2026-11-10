@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiCad 10 母板佈線實作｜數位電子乙級 試題一</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1d2330; --muted:#5d6675; --line:#dde2ea; --bg:#f6f7f9; --card:#fff;
+  --pcb:#0f3d2e; --pcb2:#1f6b4f; --cu:#c98a2b;
+  --red:#c62828; --redbg:#fdecea; --green:#1f7a4d; --greenbg:#e8f5ee;
+  --blue:#1f5fa8; --bluebg:#e8f0fb; --amber:#8a5a00; --amberbg:#fff6e0;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;font-family:"Noto Sans TC",system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.75;font-size:16.5px}
+a{color:var(--blue)}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1280px;margin:0 auto}
+nav{position:sticky;top:0;height:100vh;overflow:auto;padding:22px 16px 40px;border-right:1px solid var(--line);background:#fbfcfd;font-size:14.5px}
+nav .brand{font-weight:900;font-size:15px;color:var(--pcb);margin-bottom:4px}
+nav .prog{font-size:13px;color:var(--muted);margin:6px 0 10px}
+nav .bar{height:6px;background:#e6e9ee;border-radius:3px;overflow:hidden;margin-bottom:14px}
+nav .bar i{display:block;height:100%;width:0;background:var(--pcb2);transition:width .3s}
+nav ol{list-style:none;padding:0;margin:0}
+nav li.ch{font-weight:700;margin:14px 0 4px;color:var(--pcb)}
+nav li a{display:flex;gap:6px;align-items:center;padding:3px 6px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav li a:hover{background:#eef1f5}
+nav li a .ok{width:15px;flex:none;color:var(--green);font-weight:700}
+main{padding:28px 44px 120px;min-width:0}
+header.hero{background:linear-gradient(135deg,var(--pcb),#145c43);color:#fff;border-radius:16px;padding:30px 34px;position:relative;overflow:hidden}
+header.hero:after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.18) 2px,transparent 2.5px);background-size:22px 22px;opacity:.5;pointer-events:none}
+header.hero h1{margin:0 0 6px;font-size:30px;font-weight:900;position:relative}
+header.hero p{margin:0;opacity:.92;position:relative}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;position:relative}
+.meta span{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);padding:2px 10px;border-radius:20px;font-size:13.5px}
+h2{font-size:25px;margin:56px 0 6px;padding-top:10px;color:var(--pcb);border-top:3px solid var(--pcb)}
+h2 small{display:block;font-size:14px;color:var(--muted);font-weight:500}
+section.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 26px 18px;margin:20px 0}
+section.step h3{font-size:20px;margin:16px 0 8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+section.step h3 .no{background:var(--pcb);color:#fff;border-radius:8px;padding:1px 9px;font-size:15px}
+.done-btn{margin-left:auto;font:inherit;font-size:13.5px;border:1px solid var(--line);background:#fff;border-radius:20px;padding:3px 12px;cursor:pointer;color:var(--muted)}
+.done-btn.on{background:var(--greenbg);border-color:var(--green);color:var(--green);font-weight:700}
+.path{display:inline-block;background:#eef2f6;border:1px solid #d5dce5;border-radius:6px;padding:0 7px;font-weight:500;font-size:15px}
+kbd{font-family:"JetBrains Mono",monospace;font-size:13px;background:#fff;border:1px solid #b9c1cc;border-bottom-width:3px;border-radius:5px;padding:0 6px;white-space:nowrap}
+code{font-family:"JetBrains Mono",monospace;font-size:14px;background:#eef2f6;padding:0 5px;border-radius:4px}
+ol.steps{padding-left:0;list-style:none;counter-reset:s}
+ol.steps>li{counter-increment:s;position:relative;padding-left:38px;margin:9px 0}
+ol.steps>li:before{content:counter(s);position:absolute;left:0;top:2px;width:26px;height:26px;border-radius:50%;background:var(--cu);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.box{border-radius:10px;padding:10px 16px 10px 14px;margin:14px 0;border-left:6px solid}
+.box>b:first-child{display:block;margin-bottom:2px}
+.box p{margin:4px 0}.box ul{margin:4px 0;padding-left:22px}
+.warn{background:var(--redbg);border-color:var(--red)}
+.warn>b:first-child{color:var(--red);font-size:17px}
+.star{background:var(--greenbg);border-color:var(--green)}
+.star>b:first-child{color:var(--green)}
+.hint{background:var(--bluebg);border-color:var(--blue)}
+.hint>b:first-child{color:var(--blue)}
+.check{background:var(--amberbg);border-color:#d99a00}
+.check>b:first-child{color:var(--amber)}
+.em-red{color:var(--red);font-weight:700}
+figure{margin:14px 0;background:#f3f5f8;border:1px solid var(--line);border-radius:10px;padding:8px}
+figure img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px;cursor:zoom-in}
+figure.small img{max-width:520px}
+figure.bad{border:2px solid var(--red);background:#fff5f5}
+figure.good{border:2px solid var(--green);background:#f3fbf6}
+figcaption{font-size:14px;color:var(--muted);padding:6px 4px 0}
+figure.bad figcaption:before{content:"✗ 錯誤示範　";color:var(--red);font-weight:700}
+figure.good figcaption:before{content:"✓ 正確結果　";color:var(--green);font-weight:700}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:15px;background:#fff}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:#eef2f6}
+td.c,th.c{text-align:center}
+.free{color:var(--red);font-weight:700}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0}
+.flow span{background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-weight:500;font-size:14.5px}
+.flow i{color:var(--muted);font-style:normal}
+.legend{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.legend .box{margin:0}
+ul.cl{list-style:none;padding:0}
+ul.cl li{padding:5px 0 5px 30px;position:relative;border-bottom:1px dashed var(--line)}
+ul.cl li input{position:absolute;left:4px;top:10px;width:17px;height:17px;accent-color:var(--green)}
+#lb{position:fixed;inset:0;background:rgba(10,15,20,.88);display:none;align-items:center;justify-content:center;z-index:50;cursor:zoom-out;padding:20px}
+#lb img{max-width:100%;max-height:100%;border-radius:6px;background:#fff}
+#lb.on{display:flex}
+.menu-btn{display:none}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav{position:fixed;inset:0 25% 0 0;z-index:40;transform:translateX(-102%);transition:transform .25s;height:100%;box-shadow:4px 0 20px rgba(0,0,0,.2)}
+  nav.open{transform:none}
+  main{padding:16px 14px 100px}
+  section.step{padding:4px 14px 14px}
+  .pair,.legend{grid-template-columns:1fr}
+  .menu-btn{display:block;position:fixed;right:14px;bottom:14px;z-index:41;background:var(--pcb);color:#fff;border:0;border-radius:24px;padding:10px 16px;font:inherit;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav id="nav">
+  <div class="brand">KiCad 10 母板佈線實作</div>
+  <div class="prog" id="progtxt">完成 0 / 0 節</div>
+  <div class="bar"><i id="progbar"></i></div>
+  <ol id="toc"></ol>
+</nav>
+<main>
+<header class="hero">
+  <h1>KiCad 10 母板佈線實作</h1>
+  <p>數位電子乙級 術科．試題一（四位數七段顯示器）．題組 C — 從空白專案到交出 1:1 PDF</p>
+  <div class="meta"><span>KiCad 10.0 繁體中文介面</span><span>專案：C:\temp\exam1</span><span>元件庫：New_Library</span><span>萬用板 2.54 mm．鍍錫線 φ0.5 mm</span></div>
+</header>
+
+<h2 id="ch0">開始之前<small>先看懂圖示，再照流程一步一步做</small></h2>
+<section class="step" id="s0-1" data-t="圖示說明與流程">
+<h3><span class="no">0</span>圖示說明與整體流程</h3>
+<div class="legend">
+  <div class="box warn"><b>⚠ 易錯</b>很多同學在這裡出錯，一定要看</div>
+  <div class="box star"><b>★ 老師推薦</b>比較快、比較不會錯的做法</div>
+  <div class="box hint"><b>💡 提示</b>知道了會更順手的小技巧</div>
+  <div class="box check"><b>✅ 檢查點</b>做到這裡，畫面應該長這樣</div>
+</div>
+<p>整體流程：</p>
+<div class="flow"><span>建立專案</span><i>→</i><span>加入元件庫</span><i>→</i><span>畫原理圖</span><i>→</i><span>ERC 檢查</span><i>→</i><span>分配封裝</span><i>→</i><span>匯入 PCB、擺放對孔</span><i>→</i><span>背面走線</span><i>→</i><span>正面跳線</span><i>→</i><span>DRC 檢查</span><i>→</i><span>圖框 Title/Date</span><i>→</i><span>列印兩張 PDF</span></div>
+<div class="hint"><b>💡 準備工作</b>
+<ul><li>元件庫資料夾 <span class="path">C:\temp\KiCAD_Library</span>（內有 <code>New_Library.kicad_sym</code> 與 <code>New_Library.pretty</code>）。</li>
+<li>專案一律放在 <span class="path">C:\temp\</span> 底下、檔名用英文，可避免 Windows 權限與中文路徑問題。</li>
+<li>每一節做完按右上角「標記完成」，左側會顯示進度（只存在你這台電腦的瀏覽器）。</li>
+<li>圖片可以點一下放大。</li></ul></div>
+</section>
+
+<!-- ============ 第一章 ============ -->
+<h2 id="ch1">第一章　建立專案與元件庫</h2>
+
+<section class="step" id="s1-1" data-t="建立專案">
+<h3><span class="no">1-1</span>建立專案</h3>
+<ol class="steps">
+<li>開啟 KiCad 10，選單 <span class="path">檔案 (F) → 新增專案</span>。</li>
+<li>先跳出「<b>選擇專案範本</b>」視窗（KiCad 10 新增的步驟）→ 直接<b>雙擊 default</b>。</li>
+<li>存檔視窗：位置選 <span class="path">C:\temp</span>，檔案名稱輸入 <code>exam1</code>（一定要輸入，否則不能存）→ 存檔。</li>
+</ol>
+<figure><img src="img/01_template.jpg" loading="lazy" alt="選擇專案範本"><figcaption>選擇專案範本：直接雙擊 default</figcaption></figure>
+<div class="box warn"><b>⚠ 易錯：不要按「瀏覽…」</b><p>「瀏覽…」是選「範本目錄」，不是選存檔位置。在那裡輸入 exam1 會跳出「路徑不存在」。</p></div>
+<figure class="bad small"><img src="img/x_browse_error.jpg" loading="lazy" alt="路徑不存在"><figcaption>在「瀏覽…」裡亂輸入，會出現「路徑不存在」</figcaption></figure>
+<figure><img src="img/02_save.jpg" loading="lazy" alt="存檔視窗"><figcaption>「新建專案資料夾」視窗：檔案名稱必填；右下「為專案建立一個新目錄」</figcaption></figure>
+<div class="box warn"><b>⚠ 易錯：「為專案建立一個新目錄」</b><p>預設是勾選的。位置選在 <span class="path">C:\temp</span> → <b>保留勾選</b>；如果你已經自己建好並點進 <span class="path">C:\temp\exam1</span> → <b>取消勾選</b>，不然會變成 exam1\exam1 兩層。</p></div>
+<div class="box check"><b>✅ 檢查點</b>視窗標題「exam1 — KiCad 10.0」，左側專案樹有 exam1.kicad_pro、.kicad_pcb、.kicad_sch，下方路徑 C:\temp\exam1\exam1.kicad_pro。</div>
+<figure class="good small"><img src="img/03_project_done.jpg" loading="lazy" alt="專案建立完成"><figcaption>專案建立完成</figcaption></figure>
+</section>
+
+<section class="step" id="s1-2" data-t="加入符號庫">
+<h3><span class="no">1-2</span>加入符號庫（原理圖用）</h3>
+<ol class="steps">
+<li>選單 <span class="path">設定 (S) → 管理符號庫…</span>，開啟「符號庫」視窗。</li>
+<li>切到「<b>專案專用庫</b>」頁籤。</li>
+<li>按左下的資料夾圖示（滑鼠停上去顯示「<b>添加現有</b>」）→ 選 <span class="path">C:\temp\KiCAD_Library\New_Library.kicad_sym</span> → 開啟。</li>
+<li>按「確定 (O)」。</li>
+</ol>
+<div class="box warn"><b>⚠ 易錯</b><ul><li>要選「專案專用庫」，不是「全域庫」。</li><li>右下的「遷移庫」<span class="em-red">不要按</span>。</li></ul></div>
+<figure><img src="img/04_symlib_tab.jpg" loading="lazy" alt="符號庫視窗"><figcaption>符號庫視窗：上方兩個頁籤，左下 + 與資料夾圖示（添加現有）</figcaption></figure>
+<div class="box check"><b>✅ 檢查點</b>多了一列：啟用 ✓、顯示 ✓，名稱 New_Library，庫格式 KiCad。頁籤顯示「專案專用庫 *」（* 表示還沒按確定儲存）。</div>
+<figure class="good"><img src="img/05_symlib_added.jpg" loading="lazy" alt="符號庫加入"><figcaption>符號庫加入完成</figcaption></figure>
+</section>
+
+<section class="step" id="s1-3" data-t="加入封裝庫">
+<h3><span class="no">1-3</span>加入封裝庫（PCB 用）</h3>
+<ol class="steps">
+<li>選單 <span class="path">設定 (S) → 管理封裝庫…</span> → 「專案專用庫」→ 資料夾圖示「添加現有」。</li>
+<li>在 <span class="path">C:\temp\KiCAD_Library</span> 裡<b>點一下</b> New_Library.pretty 讓它反白（<span class="em-red">不要雙擊點進去</span>），下方「資料夾:」欄出現 New_Library.pretty。</li>
+<li>按「選擇資料夾」→ 回到封裝庫視窗按「確定 (O)」。</li>
+</ol>
+<figure><img src="img/06_fplib_select.jpg" loading="lazy" alt="選擇 KiCad 庫"><figcaption>.pretty 是一個資料夾：點選反白後按「選擇資料夾」</figcaption></figure>
+<figure class="good"><img src="img/07_fplib_added.jpg" loading="lazy" alt="封裝庫加入"><figcaption>封裝庫加入完成：名稱 New_Library，路徑 …\New_Library.pretty</figcaption></figure>
+</section>
+
+<!-- ============ 第二章 ============ -->
+<h2 id="ch2">第二章　原理圖<small>KiCad 10 中文介面叫「原理圖編輯器」</small></h2>
+
+<section class="step" id="s2-1" data-t="放置元件">
+<h3><span class="no">2-1</span>放置元件</h3>
+<p>在專案樹<b>雙擊 exam1.kicad_sch</b>，開啟「exam1 — 原理圖編輯器」。</p>
+<p>試題一需要的元件：</p>
+<table><tr><th>元件</th><th>New_Library 名稱</th><th>數量</th><th>放好後的編號</th></tr>
+<tr><td>CPLD 子板</td><td>CPLD_3064</td><td class="c">1</td><td>CPLD1</td></tr>
+<tr><td>四位數七段顯示器（共陰）</td><td>4_Digits_7Seg_CC</td><td class="c">1</td><td>DS1</td></tr>
+<tr><td>電晶體</td><td>CS9013</td><td class="c">4</td><td>Q1～Q4</td></tr>
+<tr><td>電阻</td><td>R_US</td><td class="c">12</td><td>R1～R12</td></tr></table>
+<ol class="steps">
+<li>按 <kbd>A</kbd> 開啟「選擇符號」視窗。</li>
+<li>在清單中捲到「<b>New_Library</b>」並展開，6 個元件都在裡面，點要的元件 → 確定 → 在圖紙上點一下放下。</li>
+<li>放完一個元件按 <kbd>Esc</kbd> 回到選取模式。</li>
+<li>相同的元件：點選元件 → <kbd>Ctrl</kbd>+<kbd>D</kbd> 複製 → 放下，編號會自動加 1（R1→R2→…）。</li>
+</ol>
+<div class="box star"><b>★ 老師推薦：直接展開 New_Library，不要用搜尋</b><p>用搜尋（例如打 CPLD）會同時跑出 CPLD_Altera、FPGA_Xilinx 等官方元件，也容易選到 Device:R_US 這種同名元件。直接展開 New_Library 最不會選錯。</p></div>
+<figure><img src="img/09_newlib_expanded.jpg" loading="lazy" alt="New_Library 展開"><figcaption>展開 New_Library：3x4_Keypad、4_Digits_7Seg_CC、7Seg_CA、CPLD_3064、CS9013、R_US</figcaption></figure>
+<div class="box hint"><b>💡 預覽下方顯示「未指定封裝」</b>正常，封裝在 2-7 再一次分配。</div>
+<div class="box warn"><b>⚠ 易錯：放完元件卻點不到元件</b><p>放完元件後游標還在「放置符號」模式（右下狀態列顯示「放置符號」），這時點不到任何東西。按 <kbd>Esc</kbd> 或右側工具列最上方的<b>箭頭（選取）</b>，狀態列變成「選擇項目」才能點選。</p></div>
+<div class="box hint"><b>💡 元件看起來很小？</b>先用滑鼠滾輪放大畫面再點，比較好選。</div>
+<figure><img src="img/11_r1_r8.jpg" loading="lazy" alt="R1~R8"><figcaption>用 Ctrl+D 複製出 R1～R8，編號自動遞增</figcaption></figure>
+<div class="box check"><b>✅ 檢查點</b>18 個元件就位：CPLD1、DS1、Q1～Q4（階梯狀，集極分別在 CC1～CC4 下方）、R1～R12。</div>
+<figure class="good"><img src="img/12_all_parts.jpg" loading="lazy" alt="18 個元件"><figcaption>18 個元件擺好</figcaption></figure>
+</section>
+
+<section class="step" id="s2-2" data-t="修改電阻數值">
+<h3><span class="no">2-2</span>修改電阻數值</h3>
+<p>R1～R8 = <b>200</b>（限流電阻），R9～R12 = <b>2.2k</b>（基極電阻）。兩種方法都可以：</p>
+<table><tr><th>方法 A：一個一個改</th><th>方法 B：一次改很多個</th></tr>
+<tr><td>雙擊元件 → 「符號屬性」視窗 → 「數值」欄輸入 → 確定</td>
+<td>框選或按住 <kbd>Ctrl</kbd> 點選多顆電阻 → 左側「屬性」面板顯示「選擇了 N 個物件」→ 「數值」欄輸入 → <kbd>Enter</kbd></td></tr></table>
+<figure><img src="img/13_values.jpg" loading="lazy" alt="改數值"><figcaption>方法 B：Ctrl 多選 R9～R12，在左側屬性面板一次改成 2.2k</figcaption></figure>
+</section>
+
+<section class="step" id="s2-3" data-t="電源符號與畫線">
+<h3><span class="no">2-3</span>電源符號與畫線</h3>
+<ol class="steps">
+<li>按 <kbd>P</kbd> 放電源符號：子板 VCC（30 腳）上方放 1 個 <b>VCC</b>，子板 GND（16 腳）下方放 1 個 <b>GND</b>，每顆電晶體射極下方各放 1 個 <b>GND</b>。同名的電源符號會自動相連，不用拉長線。</li>
+<li>畫線把電路接起來：
+<ul><li>R1～R8 右端 → 七段 a～g、dp 的腳（11、7、4、2、1、10、5、3）</li>
+<li>R9～R12 右端 → Q1～Q4 基極；Q1～Q4 集極 → CC1～CC4；射極 → GND</li>
+<li>電阻<b>左端先不要接</b>子板，下一節用網路標籤接。</li></ul></li>
+</ol>
+<div class="box star"><b>★ 老師推薦：不用按 W 畫線</b><p>在<b>選取（箭頭）模式</b>下，把滑鼠移到元件腳的端點點一下，就會自動切換成畫線（狀態列顯示「繪製線」），畫完自動回到選取模式。按 <kbd>W</kbd> 也可以，當作備用方法。</p></div>
+<div class="box star"><b>★ 老師推薦：邊畫線邊調整位置</b><p>一邊畫線，一邊用框選移動元件，讓線路不要重疊、不要交叉。原理圖畫得整齊，後面查錯才容易。</p></div>
+<figure><img src="img/14_power.jpg" loading="lazy" alt="電源符號"><figcaption>VCC、GND 電源符號位置</figcaption></figure>
+<figure class="good"><img src="img/15_fixed_wiring.jpg" loading="lazy" alt="畫線完成"><figcaption>線路整齊、沒有交叉；電阻左端留給網路標籤</figcaption></figure>
+</section>
+
+<section class="step" id="s2-4" data-t="網路標籤（題組 C）">
+<h3><span class="no">2-4</span>網路標籤：接子板（題組 C）</h3>
+<p>電阻左端和子板之間不拉長線，改用「網路標籤」：<b>名稱相同的標籤就是同一條線</b>。試題一題組 C 的對應如下：</p>
+<table>
+<tr><th>標籤</th><th>電阻</th><th>CPLD 腳</th><th>子板針號</th><th>標籤</th><th>電阻</th><th>CPLD 腳</th><th>子板針號</th></tr>
+<tr><td>Sa</td><td>R1</td><td>P41</td><td class="c free">29（自訂）</td><td>Sdp</td><td>R8</td><td>P11</td><td class="c">7</td></tr>
+<tr><td>Sb</td><td>R2</td><td>P40</td><td class="c">28</td><td>T0</td><td>R9</td><td>P9</td><td class="c">6</td></tr>
+<tr><td>Sc</td><td>R3</td><td>P39</td><td class="c">27</td><td>T1</td><td>R10</td><td>P8</td><td class="c">5</td></tr>
+<tr><td>Sd</td><td>R4</td><td>P37</td><td class="c">26</td><td>T2</td><td>R11</td><td>P6</td><td class="c">4</td></tr>
+<tr><td>Se</td><td>R5</td><td>P34</td><td class="c">25</td><td>T3</td><td>R12</td><td>P5</td><td class="c">3</td></tr>
+<tr><td>Sf</td><td>R6</td><td>P33</td><td class="c">24</td><td colspan="4" rowspan="2" style="color:var(--muted)">紅字＝題組 C 可自訂的腳；其餘依題組指定。</td></tr>
+<tr><td>Sg</td><td>R7</td><td>P31</td><td class="c free">23（自訂）</td></tr>
+</table>
+<ol class="steps">
+<li>按 <kbd>L</kbd>，或點右側工具列「<b>A 加底線</b>」圖示（放置網路標籤）。</li>
+<li>先在空白處輸入標籤名稱（例如 <code>Sa</code>）→ 確定。</li>
+<li>把標籤移到 R1 左端點，點一下放下。</li>
+<li>重複一次，把另一個 <code>Sa</code> 放到子板 29 腳。</li>
+<li>標籤放好後，點選標籤往外拖，會自動拉出一段線，讓標籤離開元件、不擠在腳號上。可以全部放完再一起拉線對齊。</li>
+</ol>
+<div class="box hint"><b>💡 怎麼確認接對了？</b>點選標籤，下方狀態列的「連接名稱」會顯示 <code>/Sa</code>。</div>
+<figure><img src="img/16_label_sa.jpg" loading="lazy" alt="標籤 Sa"><figcaption>點選標籤後，下方狀態列顯示連接名稱</figcaption></figure>
+<div class="box warn"><b>⚠ 易錯：子板左排腳（3～7 號）的標籤</b><p>左排腳直接放標籤，文字會往右長、壓在 CPLD 元件框上，之後點它只會點到元件，拉不出來。</p></div>
+<figure class="bad"><img src="img/x_left_labels_overlap.jpg" loading="lazy" alt="左排標籤重疊"><figcaption>左排 T0～T3、Sdp 標籤壓在 CPLD 元件框裡</figcaption></figure>
+<div class="box star"><b>★ 補救方法：用「選擇篩選器」只選標籤</b>
+<ol style="margin:4px 0;padding-left:22px"><li>左下「選擇篩選器」→ 取消「<b>所有項目</b>」，只勾「<b>標籤</b>」。</li>
+<li>這時只點得到標籤，把左排標籤往左拖出，線會自動跟著拉出、仍保持連接。</li>
+<li><span class="em-red">做完一定要把「所有項目」勾回來</span>，不然之後什麼都點不到。</li></ol>
+<p style="color:var(--muted);font-size:14px">只取消「符號」不夠，還是會點到「接腳」。</p>
+<p><b>預防方法：</b>左排腳先從腳端往左拉一段線，再把標籤放在線的左端（放的時候按 <kbd>R</kbd> 旋轉讓文字朝左）。</p></div>
+<figure><img src="img/17_filter_labels_only.jpg" loading="lazy" alt="只勾標籤"><figcaption>只勾「標籤」後，就能把左排標籤往左拉出</figcaption></figure>
+<div class="box check"><b>✅ 檢查點</b>12 種標籤共 24 個全部放好；左排 T3、T2、T1、T0、Sdp 在 3～7 腳往左拉出，右排 Sa～Sg 在 29～23 腳。按 <kbd>Ctrl</kbd>+<kbd>S</kbd> 存檔。</div>
+<figure class="good"><img src="img/18_schematic_done.jpg" loading="lazy" alt="原理圖完成"><figcaption>題組 C 原理圖完成</figcaption></figure>
+</section>
+
+<section class="step" id="s2-5" data-t="ERC 電氣規則檢查">
+<h3><span class="no">2-5</span>ERC 電氣規則檢查</h3>
+<ol class="steps">
+<li>選單 <span class="path">檢查 (I) → 電氣規則檢查</span> → 按「執行 ERC」。</li>
+<li>第一次通常會有 <b>34 個錯誤</b>：
+<ul><li>CPLD1 沒用到的 16 支腳，每支 2 個錯誤（接腳未連接、輸入接腳沒有被驅動）＝ 32</li>
+<li>VCC、GND 電源符號各 1 個（輸入電源接腳不受任何輸出電源接腳驅動）＝ 2</li></ul></li>
+<li>關閉 ERC 視窗，圖上會用<b>橘色箭頭</b>標出錯誤位置，照著箭頭處理。</li>
+</ol>
+<div class="box warn"><b>⚠ 易錯：清單空白不代表沒錯</b><p>ERC 視窗下方「顯示：所有／錯誤／警告／排除」可能沒勾，清單看起來是空的。要看<b>數字</b>（紅色的錯誤數），並勾選「錯誤」。</p></div>
+<figure><img src="img/19_erc_list.jpg" loading="lazy" alt="ERC 清單"><figcaption>第一次 ERC：錯誤成對出現在 CPLD1 沒用到的腳</figcaption></figure>
+<figure><img src="img/21_erc_markers.jpg" loading="lazy" alt="ERC 箭頭"><figcaption>關掉 ERC 視窗後，橘色箭頭標出問題位置</figcaption></figure>
+<p><b>修正方法：</b></p>
+<ol class="steps">
+<li><b>沒用到的腳放「不連接標記」</b>：按 <kbd>Q</kbd> 或右側藍色 <b>X</b> 圖示，連續點 16 支沒用到的腳（左排 1、2、8～15；右排 17～22），腳端會出現藍色 X。</li>
+<li><b>電源線上放 PWR_FLAG</b>：按 <kbd>P</kbd> → PWR_FLAG，VCC 線、GND 線上各放 1 個。</li>
+<li>存檔後重新執行 ERC（橘色箭頭要重跑才會消失）。</li>
+</ol>
+<div class="box hint"><b>💡 為什麼要 PWR_FLAG？</b><p>VCC、GND 符號的腳屬於「電源輸入」，ERC 會要求電源網路要有一個「電源輸出」來源。我們的電源是從外部（子板／檢定電源）來的，所以放 PWR_FLAG 告訴 ERC「電源從外面來」。PWR_FLAG 是虛擬元件，不會出現在 PCB，也不會進材料表。</p></div>
+<div class="box hint"><b>💡 為什麼不直接忽略？</b>工程師的習慣是讓 ERC 歸零：真正的錯誤才不會被一堆「已知的錯」淹沒。</div>
+<figure><img src="img/22_nc_pwrflag.jpg" loading="lazy" alt="不連接與 PWR_FLAG"><figcaption>藍色 X＝不連接標記；VCC、GND 線上的 PWR_FLAG</figcaption></figure>
+<div class="box check"><b>✅ 檢查點</b>ERC 結果：違規 0、錯誤 0、警告 0（綠色）。</div>
+<figure class="good"><img src="img/23_erc_zero.jpg" loading="lazy" alt="ERC 0"><figcaption>ERC 全部歸零</figcaption></figure>
+</section>
+
+<section class="step" id="s2-6" data-t="分配封裝">
+<h3><span class="no">2-6</span>分配封裝</h3>
+<p>選單 <span class="path">工具 (T) → 分配封裝…</span>（不是「指定封裝」）。</p>
+<figure class="small"><img src="img/24_tools_menu.jpg" loading="lazy" alt="工具選單"><figcaption>工具選單：分配封裝…、從原理圖更新 PCB… (F8)</figcaption></figure>
+<ol class="steps">
+<li>左欄「封裝庫」點 <b>New_Library</b>，上方「封裝篩選規則」最右邊的 <b>L</b> 圖示要亮起 → 右欄只剩 7 個封裝。</li>
+<li>中間點選元件，再到右欄<b>雙擊</b>封裝即可分配。多個同類元件可用 <kbd>Shift</kbd> 多選，一次雙擊。</li>
+<li>按「確定」。</li>
+</ol>
+<table><tr><th>元件</th><th>封裝</th></tr>
+<tr><td>CPLD1</td><td>New_Library:CPLD_3064_D</td></tr>
+<tr><td>DS1</td><td>New_Library:4_Digits_7Seg</td></tr>
+<tr><td>Q1～Q4</td><td>New_Library:Transistor</td></tr>
+<tr><td>R1～R12</td><td>New_Library:Resistor（腳距 10.16 mm）</td></tr></table>
+<figure><img src="img/26_fp_filter_lib.jpg" loading="lazy" alt="篩選 New_Library"><figcaption>點 New_Library 並啟用 L 篩選：右欄只剩 7 個</figcaption></figure>
+<div class="box warn"><b>⚠ 易錯</b>沒有點 New_Library，右欄會有一萬五千多個封裝，很容易選錯。</div>
+<figure class="good"><img src="img/27_fp_assigned.jpg" loading="lazy" alt="封裝分配完成"><figcaption>18 個元件都分配好封裝</figcaption></figure>
+</section>
+
+<section class="step" id="s2-7" data-t="縮放與刪除連線">
+<h3><span class="no">2-7</span>畫面縮放、刪除連線</h3>
+<p><b>上方工具列的縮放圖示</b>（左→右）：重繪 <kbd>F5</kbd>、放大 <kbd>F1</kbd>、縮小 <kbd>F2</kbd>、縮放以適合頁面 <kbd>Home</kbd>、縮放以適合物件 <kbd>Ctrl</kbd>+<kbd>Home</kbd>、縮放至選取區域 <kbd>Ctrl</kbd>+<kbd>F5</kbd>（用滑鼠拖出一個框）。滑鼠停在圖示上會顯示說明。</p>
+<figure class="small"><img src="img/28_zoom_toolbar.jpg" loading="lazy" alt="縮放工具列"><figcaption>縮放工具列</figcaption></figure>
+<div class="box hint"><b>💡 滑鼠操作</b>滾輪＝縮放；按住滾輪拖曳＝平移畫面。</div>
+<p><b>刪除原理圖連線</b>：</p>
+<ul>
+<li><b>刪一段</b>：點選線段 → <kbd>Delete</kbd>。</li>
+<li><b>刪一整條相連的線</b>：在線上按右鍵 → 「<b>選擇/擴展連接</b>」（<kbd>Ctrl</kbd>+<kbd>4</kbd>）→ <kbd>Delete</kbd>。</li>
+<li><b>連續刪很多零散的東西</b>：<span class="path">編輯 → 交互式刪除工具</span>，一個一個點。</li>
+<li>刪錯了：<kbd>Ctrl</kbd>+<kbd>Z</kbd> 復原。</li>
+</ul>
+<figure><img src="img/62_sch_wire_context_menu.jpg" loading="lazy" alt="右鍵選單"><figcaption>在線上按右鍵，第一項就是「選擇/擴展連接」</figcaption></figure>
+<div class="box warn"><b>⚠ 刪完線要重跑 ERC</b>確認沒有留下沒接好的線頭。</div>
+</section>
+
+<!-- ============ 第三章 ============ -->
+<h2 id="ch3">第三章　PCB 佈置與佈線<small>KiCad 10 中文介面叫「PCB 編輯器」</small></h2>
+
+<section class="step" id="s3-1" data-t="從原理圖更新 PCB">
+<h3><span class="no">3-1</span>從原理圖更新 PCB</h3>
+<div class="box star"><b>★ 先設網格，再匯入</b><p>先開 PCB 編輯器，把上方第二列工具列的網格改成 <b>2.5400 mm (0.1000 in)</b>（萬用板孔距），再匯入元件，可以避免元件沒對到孔。</p></div>
+<ol class="steps">
+<li>在原理圖編輯器按 <kbd>F8</kbd>（工具 → 從原理圖更新 PCB…），會開啟 PCB 編輯器並跳出「從原理圖更新 PCB」視窗。</li>
+<li>選項保持預設 → 確認最後一行「總計警告:0, 錯誤:0」→ 按「<b>更新 PCB</b>」→ 關閉。</li>
+<li>18 個封裝會擠成一堆黏在滑鼠上，點一下放下。元件之間的藍色細線叫<b>飛線</b>，代表還沒接的線。</li>
+</ol>
+<figure><img src="img/29_update_pcb.jpg" loading="lazy" alt="更新 PCB"><figcaption>從原理圖更新 PCB：總計警告 0、錯誤 0</figcaption></figure>
+<figure><img src="img/31_grid254.jpg" loading="lazy" alt="網格 2.54"><figcaption>網格下拉選 2.5400 mm，狀態列顯示「網格 2.5400」</figcaption></figure>
+<div class="box hint"><b>💡 進度指標：「未佈線」</b>左下統計列的「未佈線」數字就是還沒接的線數。走線全部完成時要變成 <b>0</b>。</div>
+</section>
+
+<section class="step" id="s3-2" data-t="放置母板外框 PCB_M">
+<h3><span class="no">3-2</span>放置母板外框 PCB_M</h3>
+<ol class="steps">
+<li>按 <kbd>A</kbd> → 展開 New_Library → <b>PCB_M</b> → 放下。外框包含萬用板孔格（User.1 層）、四角安裝孔、周圍電源匯流排。</li>
+<li>在外框上按右鍵 → 「<b>鎖定</b>」，之後就不會不小心移動它。</li>
+</ol>
+<figure><img src="img/32_pcbm_placed.jpg" loading="lazy" alt="PCB_M"><figcaption>放好 PCB_M 外框</figcaption></figure>
+<div class="box warn"><b>⚠ 易錯：鎖定後點不到外框</b><p>右下「選擇篩選器」的「<b>鎖定項目</b>」預設沒勾，所以鎖定後的外框點不到（這是好處）。如果之後要移動外框或取消鎖定，<span class="em-red">要先勾選「鎖定項目」</span>才選得到，做完再取消勾選。</p></div>
+</section>
+
+<section class="step" id="s3-3" data-t="擺放元件、對準萬用板孔">
+<h3><span class="no">3-3</span>擺放元件、對準萬用板孔</h3>
+<p>把元件拉進外框，參考實體母板位置擺放：子板 CPLD1 在左、七段 DS1 在右上、R1～R8 在中間一排、Q1～Q4 在七段下方、R9～R12 直立在電晶體下方。元件要<b>平均分布、不可超出板框</b>（術科規則 2）。</p>
+<div class="box warn"><b>⚠ 易錯：焊墊沒有對到孔</b><p>用滑鼠隨便拖曳，元件會保留原本的偏移，焊墊就壓在格線上，不在孔的中心。</p></div>
+<div class="box star"><b>★ 正確的移動方法</b>
+<ol style="margin:4px 0;padding-left:22px"><li>按 <kbd>Esc</kbd> 取消選取。</li>
+<li>把游標移到元件的 <b>1 號焊墊中心</b>（會吸附）。</li>
+<li>按 <kbd>M</kbd> 移動 → 點下。焊墊就會對齊 2.54 mm 格點。</li></ol>
+<p>用滑鼠拖曳也可以，但一定要<b>抓在焊墊中心</b>拖。</p></div>
+<div class="pair">
+<figure class="bad"><img src="img/x_r_offgrid.jpg" loading="lazy" alt="沒對孔"><figcaption>R5～R8 焊墊壓在格線上</figcaption></figure>
+<figure class="good"><img src="img/34_pads_on_holes.jpg" loading="lazy" alt="有對孔"><figcaption>焊墊在方格正中央＝對到孔</figcaption></figure>
+</div>
+<div class="box hint"><b>💡 怎麼確認有沒有對孔？</b><ul><li>看畫面：開啟 User.1 層放大，孔格是方格，焊墊要在方格正中央。</li><li>看數字：點選元件，左側屬性面板的位置 X、Y 都要是 2.54 的整數倍（例如 86.36 = 34 × 2.54）。</li></ul></div>
+<div class="box hint"><b>💡 在 PCB 點焊墊，原理圖會跳出來？</b>這是「交互探測」：原理圖會反白同一支腳，方便對照。切回 PCB 編輯器繼續就好。</div>
+<figure class="good"><img src="img/35_all_on_holes.jpg" loading="lazy" alt="全部對孔"><figcaption>全部元件對孔完成</figcaption></figure>
+</section>
+
+<section class="step" id="s3-4" data-t="走線前設定">
+<h3><span class="no">3-4</span>走線前設定：層、線寬、轉角</h3>
+<div class="box hint"><b>💡 先搞懂方向</b><p>PCB 編輯器預設是從<b>正面（元件面）往下看</b>。元件在正面，走線畫在<b>背面 B.Cu</b>，所以畫面上看到的是「透視穿過板子」的走線，跟你把板子翻過來看會左右相反。</p></div>
+<ol class="steps">
+<li>作用層切到 <b>B.Cu</b>：按 <kbd>PgDn</kbd>，或在工具列下拉選。</li>
+<li>新增 0.5 mm 線寬（檢定用 φ0.5 mm 鍍錫裸銅線）：走線寬度下拉 → 「<b>編輯預定義尺寸…</b>」→ 走線表格按 + → 輸入 <code>0.5</code> → 確定 → 下拉選「走線: 0.500 mm」。</li>
+<li>同一個視窗設定貫孔（跳線用）：直徑 <b>2.032 mm</b>、孔徑 <b>1 mm</b>（和子板、七段的焊墊一樣大）。</li>
+</ol>
+<figure><img src="img/45_predefined_sizes.jpg" loading="lazy" alt="預定義尺寸"><figcaption>電路板設定 → 預定義尺寸：走線 0.5 mm；貫孔 2.032 / 1 mm</figcaption></figure>
+<figure class="good"><img src="img/37_width_05.jpg" loading="lazy" alt="線寬 0.5"><figcaption>工具列顯示「走線: 0.500 mm」、作用層 B.Cu</figcaption></figure>
+<div class="box warn"><b>⚠ 走線只能水平、垂直，轉角 90° 或 135°</b>（術科規則 5）。KiCad 預設會走 45° 斜線，走線時按 <kbd>/</kbd> 切換轉角方式。</div>
+</section>
+
+<section class="step" id="s3-5" data-t="背面走線">
+<h3><span class="no">3-5</span>背面走線</h3>
+<ol class="steps">
+<li>游標移到起點焊墊 → 按 <kbd>X</kbd>（狀態列顯示「佈線(單端)」）。</li>
+<li>拉到終點焊墊點下，會自動結束。中途點一下可以轉彎。</li>
+<li>走錯了：走線途中按 <kbd>Backspace</kbd> 退回上一個轉角。</li>
+</ol>
+<figure><img src="img/38_first_track.jpg" loading="lazy" alt="第一條走線"><figcaption>第一條走線：R9 → Q1 基極，「未佈線」從 32 變 31</figcaption></figure>
+<div class="box star"><b>★ 老師的做法：只看 B.Cu 先畫完能畫的線</b>
+<ol style="margin:4px 0;padding-left:22px"><li>右側「外觀」面板 → 層清單下方「▸ <b>層顯示選項</b>」展開。</li>
+<li>「非活動層 (H)」選「<b>隱藏</b>」→ 畫面只剩 B.Cu 走線和飛線，最清楚（按 <kbd>H</kbd> 可以在 正常／暗顯／隱藏 之間切換）。</li>
+<li>先把能畫的線全部畫完，最後剩下畫不過去的，再決定用跳線。</li></ol></div>
+<div class="pair">
+<figure><img src="img/41_layer_display_options.jpg" loading="lazy" alt="層顯示選項"><figcaption>層顯示選項：非活動層 正常／暗顯／隱藏</figcaption></figure>
+<figure><img src="img/42_hidden_mode_routing.jpg" loading="lazy" alt="隱藏模式"><figcaption>「隱藏」模式：只看背面走線</figcaption></figure>
+</div>
+<div class="box star"><b>★ 萬用板技巧：走線可以從元件本體下方穿過</b><p>電阻兩腳之間（本體下方）的孔也可以走線。例如 Q1～Q4 的射極（GND）就是從 R9～R12 兩腳之間穿過去串在一起，不用跳線。</p></div>
+<figure><img src="img/40b_gnd_zoom.jpg" loading="lazy" alt="GND 穿過電阻下方"><figcaption>GND 橫線從電阻本體下方穿過，把四顆電晶體的射極串起來</figcaption></figure>
+<p><b>刪除走線：</b></p>
+<ul>
+<li>點一段 → <kbd>Delete</kbd>。</li>
+<li>點一段 → 按 <kbd>U</kbd> 選取整條相連的走線（再按一次 <kbd>U</kbd> 擴大到整個網路）→ <kbd>Delete</kbd>。</li>
+<li>選擇篩選器只勾「走線」→ 框選 → <kbd>Delete</kbd>（做完記得勾回「所有項目」）。</li>
+<li>刪掉的走線會變回飛線，「未佈線」數字會增加。<kbd>Ctrl</kbd>+<kbd>Z</kbd> 可以復原。</li>
+</ul>
+</section>
+
+<section class="step" id="s3-6" data-t="畫不過去怎麼辦（範例解答）">
+<h3><span class="no">3-6</span>畫不過去怎麼辦？</h3>
+<p>單面走線畫到最後，常會有幾條線被別的線「包圍」住過不去。這時候：</p>
+<ul>
+<li><b>不要硬繞</b>：保留成一條<b>直線</b>的飛線，這就是將來要放跳線的位置。</li>
+<li><b>跳線越少越好</b>，而且盡量是短、水平或垂直的直線，比較好焊。</li>
+<li><b>走線順序會影響跳線數量</b>：容易被包圍的腳（例如七段下排的腳）要<b>先接</b>，外圍的線晚點接。</li>
+<li>多利用「元件本體下方穿過」的技巧調換線的上下順序。</li>
+</ul>
+<figure><img src="img/43b_stuck_zoom.jpg" loading="lazy" alt="被包圍"><figcaption>卡住的例子：七段下排左側的腳被集極線圍住</figcaption></figure>
+<div class="box check"><b>✅ 範例解答（老師完成版）</b>背面走線 121 段、貫孔 0，只剩 3 條直線飛線＝ 3 條跳線：
+<ul><li><b>e</b>（R5 → DS1-1）：在七段下方，長 5 孔</li>
+<li><b>d</b>（R4 → DS1-2）：在七段上下排腳之間（本體下方），長 7 孔</li>
+<li><b>g</b>（R7 → DS1-5）：在七段上下排腳之間（本體下方），長 4 孔</li></ul></div>
+<figure class="good"><img src="img/44_teacher_final.jpg" loading="lazy" alt="老師完成版"><figcaption>老師完成版：只剩 3 條飛線</figcaption></figure>
+<figure><img src="img/44b_teacher_final_zoom.jpg" loading="lazy" alt="跳線位置"><figcaption>3 條跳線的位置（放大）</figcaption></figure>
+<div class="box warn"><b>⚠ 焊接順序</b>d、g 兩條跳線在七段顯示器本體下方，實作時要<span class="em-red">先焊跳線，再焊七段顯示器</span>。</div>
+</section>
+
+<section class="step" id="s3-7" data-t="正面跳線">
+<h3><span class="no">3-7</span>正面跳線</h3>
+<p>跳線在 PCB 上的畫法：兩端各放一個<b>貫孔</b>（＝萬用板的孔），正面 <b>F.Cu</b> 畫一條直線連起來（＝正面那段鍍錫線）。</p>
+<ol class="steps">
+<li>工具列「貫孔」下拉選 2.032 / 1 mm。</li>
+<li>選單「放置 → <b>放置貫孔</b>」，在跳線兩端的線頭各放一個貫孔。</li>
+<li>按 <kbd>PgUp</kbd> 切到 <b>F.Cu</b> → <kbd>X</kbd> 從一個貫孔畫直線到另一個貫孔。</li>
+<li>按 <kbd>PgDn</kbd> 切回 B.Cu。</li>
+</ol>
+<div class="box warn"><b>⚠ 看不到紅色跳線？</b>非活動層設成「隱藏」時，F.Cu 的線不會顯示。改成「<b>暗顯</b>」就看得到。</div>
+<div class="box check"><b>✅ 檢查點</b>左下統計列：貫孔 6、走線段 124、<b>未佈線 0</b>。</div>
+<figure class="good"><img src="img/46_jumpers_done.jpg" loading="lazy" alt="跳線完成"><figcaption>3 條紅色 F.Cu 跳線完成，未佈線 0</figcaption></figure>
+</section>
+
+<section class="step" id="s3-8" data-t="DRC 設計規則檢查">
+<h3><span class="no">3-8</span>DRC 設計規則檢查</h3>
+<ol class="steps">
+<li>選單 <span class="path">檢查 (I) → 設計規則檢查</span> → 執行。</li>
+<li>先看「<b>未連接項目</b>」頁籤：必須是 <b>0</b>。</li>
+<li>再看「違規」清單：會有一百多個錯誤，但對象幾乎都是 <b>REF**</b>（PCB_M 外框）。</li>
+</ol>
+<div class="box hint"><b>💡 為什麼外框會有一堆錯？</b><p>PCB_M 外框的電源匯流排和焊墊沒有設定網路，KiCad 會判斷成「短路」「間隙違規」「防焊開窗」等錯誤。這是外框封裝本身造成的，<b>不是你走線的問題</b>。警告大多是電阻絲印碰到焊墊，屬於外觀問題。</p></div>
+<div class="box check"><b>✅ 本練習的 DRC 合格標準</b><ul><li>「未連接項目」＝ 0</li><li>錯誤清單中，除了 REF**（外框）之外，沒有其他元件或走線的錯誤</li></ul></div>
+<figure><img src="img/47_drc_first.jpg" loading="lazy" alt="DRC"><figcaption>DRC 結果：錯誤都來自 REF**（外框），未連接項目 0</figcaption></figure>
+<div class="box hint"><b>💡 清掉畫面上的箭頭</b>確認沒問題後，在 DRC 視窗按「<b>刪除所有標記</b>」。標記只是畫面提示，不影響電路，也不會印出來。</div>
+<figure class="good"><img src="img/48_front_final.jpg" loading="lazy" alt="完成"><figcaption>DRC 標記清除後的完成畫面</figcaption></figure>
+</section>
+
+<section class="step" id="s3-9" data-t="3D 查看器檢查">
+<h3><span class="no">3-9</span>3D 查看器檢查（選做）</h3>
+<p>在 PCB 編輯器按 <kbd>Alt</kbd>+<kbd>3</kbd>，開啟「<b>3D 查看器</b>」。用滑鼠拖曳可以旋轉，也可以翻到背面看走線。適合最後檢查：</p>
+<ul><li>元件外框有沒有重疊</li><li>有沒有元件超出板子</li><li>編號清不清楚</li><li>元件分布平不平均（術科規則 2）</li></ul>
+<div class="box warn"><b>⚠ 看不到立體零件是正常的</b>New_Library 的封裝沒有 3D 模型，畫面只會有板子、焊墊、白色外框和編號。不是做錯，不用處理。</div>
+<figure class="good"><img src="img/63_3d_viewer.jpg" loading="lazy" alt="3D 查看器"><figcaption>3D 查看器：元件都在板框內、沒有重疊</figcaption></figure>
+</section>
+
+<section class="step" id="s3-10" data-t="翻轉電路板視圖">
+<h3><span class="no">3-10</span>翻轉電路板視圖：從背面看</h3>
+<ol class="steps">
+<li>外觀面板 → 層顯示選項 → 勾「<b>翻轉電路板視圖</b>」；非活動層設「正常」。</li>
+<li>畫面左右翻轉＝從焊接面看：子板跑到右邊、七段在左上，文字變成鏡像。這就是你實際焊接、循線時看到的樣子。</li>
+<li>看完<b>取消勾選</b>回到正面，<kbd>Ctrl</kbd>+<kbd>S</kbd> 存檔。</li>
+</ol>
+<figure><img src="img/49_flipped_back_view.jpg" loading="lazy" alt="翻轉"><figcaption>翻轉電路板視圖：從背面（焊接面）看</figcaption></figure>
+</section>
+
+<!-- ============ 第四章 ============ -->
+<h2 id="ch4">第四章　術科輸出：圖框與 PDF</h2>
+
+<section class="step" id="s4-1" data-t="術科電腦製圖規則">
+<h3><span class="no">4-1</span>術科電腦製圖規則</h3>
+<table><tr><th class="c">#</th><th>規則</th><th>本教材對應</th></tr>
+<tr><td class="c">1</td><td>零件佈置圖、佈線圖存成 PDF，1:1 列印</td><td>4-3、4-4</td></tr>
+<tr><td class="c">2</td><td>零件平均分布，外緣不得超出母板</td><td>3-3、3-9</td></tr>
+<tr><td class="c">3</td><td>圖框右下 Title＝術科測試編號-崗位編號、Date＝測試日期，<span class="em-red">缺一項扣 10 分</span></td><td>4-2</td></tr>
+<tr><td class="c">4</td><td>零件代號與母板材料表相符</td><td>2-1</td></tr>
+<tr><td class="c">5</td><td>佈線水平或垂直，折角 90° 或 135°</td><td>3-4</td></tr></table>
+<figure class="small"><img src="img/50_exam_rules.jpg" loading="lazy" alt="規則"><figcaption>術科電腦製圖規則</figcaption></figure>
+</section>
+
+<section class="step" id="s4-2" data-t="頁面設定：Title 與 Date">
+<h3><span class="no">4-2</span>頁面設定：Title 與 Date</h3>
+<ol class="steps">
+<li>PCB 編輯器 <span class="path">檔案 → 頁面設定</span>。</li>
+<li>圖紙：<b>A4、橫向</b>。</li>
+<li>右側「標題欄」：
+<ul><li><b>標題</b>＝Title：輸入「術科測試編號-崗位編號」。<b>練習時輸入自己的學號。</b></li>
+<li><b>發行日期</b>＝Date：可按 <b>&lt;&lt;&lt;</b> 帶入右邊日期選擇器的日期（格式 2026-11-10）。</li></ul></li>
+<li>確定 → 存檔。</li>
+</ol>
+<figure><img src="img/51_page_setup.jpg" loading="lazy" alt="頁面設定"><figcaption>頁面設定：標題＝Title、發行日期＝Date</figcaption></figure>
+<div class="box check"><b>✅ 檢查點</b>圖框右下角出現 Title 與 Date。</div>
+<figure class="good"><img src="img/52_titleblock.jpg" loading="lazy" alt="圖框"><figcaption>圖框：Title: C112123456、Date: 2026-11-10</figcaption></figure>
+</section>
+
+<section class="step" id="s4-3" data-t="列印零件佈置圖">
+<h3><span class="no">4-3</span>列印 ① 零件佈置圖（正面）</h3>
+<p><span class="path">檔案 → 列印</span>（或工具列印表機圖示）。KiCad 10 的列印視窗最上方有「列印機」可以直接選。</p>
+<table><tr><th>項目</th><th>設定</th></tr>
+<tr><td>列印機</td><td>Microsoft Print to PDF</td></tr>
+<tr><td>包含層（只勾這 8 個）</td><td><b>F.Cu、F.Adhesive、F.Paste、F.Silkscreen、F.Mask、F.Courtyard、F.Fab、Edge.Cuts</b></td></tr>
+<tr><td>輸出模式</td><td>黑白</td></tr>
+<tr><td>列印圖紙</td><td>✓（沒勾就沒有圖框和 Title/Date）</td></tr>
+<tr><td>鑽孔標記</td><td>無鑽孔標記</td></tr>
+<tr><td>鏡像列印</td><td>✗ 不勾</td></tr>
+<tr><td>比例</td><td>1:1</td></tr></table>
+<div class="box warn"><b>⚠ KiCad 10 列印視窗的預設值都要改</b>預設是：包含層全部沒勾、「列印圖紙」沒勾、鑽孔標記「小標記」。</div>
+<figure><img src="img/55_print_dialog_k10.jpg" loading="lazy" alt="列印視窗"><figcaption>KiCad 10 列印視窗（預設值）</figcaption></figure>
+<ol class="steps">
+<li>先按「<b>列印預覽</b>」確認。</li>
+<li>按「列印」→ 在 Windows 列印設定中：方向選<b>橫向</b>、縮放選<b>實際大小 / 100%</b>。</li>
+<li>存成 <code>學號_佈置圖.pdf</code>，放在專案資料夾。</li>
+</ol>
+<div class="box warn"><b>⚠ 易錯：預覽出現整片背面走線</b>表示不小心勾到 B.Cu，取消後再預覽。</div>
+<div class="pair">
+<figure class="bad"><img src="img/56_print_preview_top_check.jpg" loading="lazy" alt="勾到 B.Cu"><figcaption>勾到 B.Cu，背面走線混進佈置圖</figcaption></figure>
+<figure class="good"><img src="img/57_preview_top_ok.jpg" loading="lazy" alt="佈置圖正確"><figcaption>佈置圖：外框、元件、編號、正面跳線、圖框</figcaption></figure>
+</div>
+<div class="box warn"><b>⚠ 1:1 的關鍵：橫向＋實際大小</b>頁面是 A4 橫向。印表機方向如果是「直向」，或縮放選「符合頁面」，Windows 會把圖縮小或裁掉，就<b>不是 1:1</b>，違反規則 1。</div>
+<div class="box hint"><b>💡 佈置圖上規則排列的黑色小方塊是什麼？</b>那是 PCB_M 外框在絲印層上的定位方塊，每 10 孔（25.4 mm）一個，對應實體檢定板上的定位方格，方便數孔對位。不是錯誤，保留即可。</div>
+</section>
+
+<section class="step" id="s4-4" data-t="列印佈線圖">
+<h3><span class="no">4-4</span>列印 ② 佈線圖（背面）</h3>
+<p>回到列印視窗，<b>先把 F 層全部取消</b>，再改成下面的設定：</p>
+<table><tr><th>項目</th><th>設定</th></tr>
+<tr><td>包含層（只勾這 8 個）</td><td><b>B.Cu、B.Adhesive、B.Paste、B.Silkscreen、B.Mask、B.Courtyard、B.Fab、Edge.Cuts</b></td></tr>
+<tr><td>輸出模式／列印圖紙／鑽孔標記／比例</td><td>黑白／✓／無鑽孔標記／1:1（和佈置圖相同）</td></tr>
+<tr><td>鏡像列印</td><td><span class="em-red">✓ 要勾</span></td></tr></table>
+<div class="box warn"><b>⚠ 佈置圖和佈線圖只差在「鏡像列印」</b>最容易忘記。另外層清單很長，要<b>往下捲到底</b>確認 User.1～User.4 等層沒有被勾到。</div>
+<figure class="small"><img src="img/60_print_routing_settings.jpg" loading="lazy" alt="佈線圖設定"><figcaption>佈線圖的列印設定：B 層＋Edge.Cuts、鏡像列印 ✓</figcaption></figure>
+<p>一樣先預覽，再列印：方向<b>橫向</b>、縮放<b>實際大小</b>，存成 <code>學號_佈線圖.pdf</code>。</p>
+</section>
+
+<section class="step" id="s4-5" data-t="檢查兩份 PDF">
+<h3><span class="no">4-5</span>檢查兩份 PDF</h3>
+<div class="pair">
+<figure class="good"><img src="img/59_pdf_layout_result.jpg" loading="lazy" alt="佈置圖 PDF"><figcaption>① 佈置圖 PDF</figcaption></figure>
+<figure class="good"><img src="img/61_pdf_routing_result.jpg" loading="lazy" alt="佈線圖 PDF"><figcaption>② 佈線圖 PDF（鏡像：七段在左、子板在右）</figcaption></figure>
+</div>
+<div class="box check"><b>✅ PDF 檢查</b>
+<ul><li>兩張都是 A4 橫向，圖框完整、離紙邊約 1 cm。</li>
+<li>兩張的板子大小一樣（都是 1:1）。</li>
+<li>右下角都有 Title 和 Date。</li>
+<li>佈置圖：有元件外框和編號，<b>沒有</b>背面走線。</li>
+<li>佈線圖：左右相反，只有背面走線和焊點；圖框文字仍是正的。</li></ul></div>
+</section>
+
+<!-- ============ 附錄 ============ -->
+<h2 id="ch5">附錄</h2>
+
+<section class="step" id="s5-1" data-t="常用快捷鍵">
+<h3><span class="no">A</span>常用快捷鍵</h3>
+<div class="pair">
+<table><tr><th colspan="2">原理圖編輯器</th></tr>
+<tr><td><kbd>A</kbd></td><td>放置符號（元件）</td></tr>
+<tr><td><kbd>P</kbd></td><td>放置電源符號（VCC、GND、PWR_FLAG）</td></tr>
+<tr><td><kbd>W</kbd></td><td>畫線（或在選取模式點腳端）</td></tr>
+<tr><td><kbd>L</kbd></td><td>網路標籤</td></tr>
+<tr><td><kbd>Q</kbd></td><td>不連接標記</td></tr>
+<tr><td><kbd>R</kbd></td><td>旋轉</td></tr>
+<tr><td><kbd>M</kbd> / <kbd>G</kbd></td><td>移動／拖動（線跟著走）</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>複製元件</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>4</kbd></td><td>選擇／擴展連接</td></tr>
+<tr><td><kbd>F8</kbd></td><td>從原理圖更新 PCB</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>回到選取模式</td></tr></table>
+<table><tr><th colspan="2">PCB 編輯器</th></tr>
+<tr><td><kbd>X</kbd></td><td>走線</td></tr>
+<tr><td><kbd>/</kbd></td><td>走線時切換轉角方式</td></tr>
+<tr><td><kbd>Backspace</kbd></td><td>走線時退回上一個轉角</td></tr>
+<tr><td><kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>切換到 F.Cu／B.Cu</td></tr>
+<tr><td><kbd>M</kbd></td><td>移動（游標先放在焊墊中心）</td></tr>
+<tr><td><kbd>U</kbd></td><td>選取整條相連走線</td></tr>
+<tr><td><kbd>H</kbd></td><td>非活動層 正常／暗顯／隱藏</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>3</kbd></td><td>3D 查看器</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd> / <kbd>Ctrl</kbd>+<kbd>Z</kbd></td><td>存檔／復原</td></tr></table>
+</div>
+</section>
+
+<section class="step" id="s5-2" data-t="交件前檢查清單">
+<h3><span class="no">B</span>交件前檢查清單</h3>
+<ul class="cl" id="checklist">
+<li><input type="checkbox">ERC：錯誤 0、警告 0</li>
+<li><input type="checkbox">所有元件都已分配 New_Library 的封裝</li>
+<li><input type="checkbox">所有焊墊都對準萬用板孔（在方格中央）</li>
+<li><input type="checkbox">元件平均分布，沒有超出板框（3D 查看器確認）</li>
+<li><input type="checkbox">走線只有水平、垂直，轉角 90° 或 135°</li>
+<li><input type="checkbox">「未佈線」＝ 0</li>
+<li><input type="checkbox">DRC：未連接項目 0；錯誤只來自 REF**（外框）</li>
+<li><input type="checkbox">圖框 Title、Date 都有填（缺一項扣 10 分）</li>
+<li><input type="checkbox">佈置圖 PDF：F 層＋Edge.Cuts、不鏡像、1:1、橫向</li>
+<li><input type="checkbox">佈線圖 PDF：B 層＋Edge.Cuts、鏡像、1:1、橫向</li>
+<li><input type="checkbox">兩份 PDF 的板子大小相同</li>
+</ul>
+</section>
+
+<section class="step" id="s5-3" data-t="試題二自主練習">
+<h3><span class="no">C</span>試題二：自主練習</h3>
+<p>試題一完成後，用同樣的流程自己完成試題二（鍵盤＋單顆七段顯示器）。開一個新專案，例如 <span class="path">C:\temp\exam2</span>。</p>
+<table><tr><th>元件</th><th>New_Library 名稱</th></tr>
+<tr><td>CPLD 子板</td><td>CPLD_3064</td></tr>
+<tr><td>3×4 鍵盤</td><td>3x4_Keypad</td></tr>
+<tr><td>七段顯示器（共陽）</td><td>7Seg_CA</td></tr>
+<tr><td>電阻</td><td>R_US</td></tr></table>
+<div class="box hint"><b>💡 提醒</b><ul>
+<li>題組依老師指定，先把「標籤－CPLD 腳－子板針號」對照表寫好再放網路標籤。</li>
+<li>試題二用的是<b>共陽</b>七段（7Seg_CA），不要選成試題一的共陰元件。</li>
+<li>封裝在分配封裝視窗的 New_Library 裡找，名稱和試題一不同（3x4_Keypad、7Seg）。</li>
+<li>最後一樣交兩份 1:1 PDF，並用上面的檢查清單逐項確認。</li></ul></div>
+</section>
+
+</main>
+</div>
+<button class="menu-btn" id="menuBtn">目錄</button>
+<div id="lb"><img alt=""></div>
+<script>
+(function(){
+  var store={get:function(k){try{return localStorage.getItem(k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+  var KEY='kicad10-exam1-done', CKEY='kicad10-exam1-check';
+  var done={}; try{done=JSON.parse(store.get(KEY)||'{}')||{}}catch(e){done={}}
+  var toc=document.getElementById('toc');
+  var chapters=document.querySelectorAll('main h2');
+  var sections=[].slice.call(document.querySelectorAll('section.step'));
+  chapters.forEach(function(h){
+    var li=document.createElement('li');li.className='ch';li.textContent=h.childNodes[0].textContent.trim();toc.appendChild(li);
+    var el=h.nextElementSibling;
+    while(el && el.tagName!=='H2'){
+      if(el.matches && el.matches('section.step')){
+        var s=el, a=document.createElement('a'); a.href='#'+s.id;
+        var no=s.querySelector('.no').textContent;
+        a.innerHTML='<span class="ok"></span><span>'+no+'　'+s.dataset.t+'</span>';
+        var l=document.createElement('li');l.appendChild(a);toc.appendChild(l);
+        s._tocOk=a.querySelector('.ok');
+        var b=document.createElement('button');b.className='done-btn';b.type='button';
+        s.querySelector('h3').appendChild(b); s._btn=b;
+        b.addEventListener('click',(function(sec){return function(){done[sec.id]=!done[sec.id];store.set(KEY,JSON.stringify(done));paint();}})(s));
+      }
+      el=el.nextElementSibling;
+    }
+  });
+  function paint(){
+    var n=0;
+    sections.forEach(function(s){var on=!!done[s.id]; if(on)n++;
+      s._btn.textContent=on?'✓ 已完成':'標記完成'; s._btn.classList.toggle('on',on); s._tocOk.textContent=on?'✓':'';});
+    document.getElementById('progtxt').textContent='完成 '+n+' / '+sections.length+' 節';
+    document.getElementById('progbar').style.width=(100*n/sections.length)+'%';
+  }
+  paint();
+  var cks=[]; try{cks=JSON.parse(store.get(CKEY)||'[]')||[]}catch(e){}
+  document.querySelectorAll('#checklist input').forEach(function(c,i){c.checked=!!cks[i];
+    c.addEventListener('change',function(){cks[i]=c.checked;store.set(CKEY,JSON.stringify(cks));});});
+  var lb=document.getElementById('lb'), lbi=lb.querySelector('img');
+  document.querySelectorAll('figure img').forEach(function(im){im.addEventListener('click',function(){lbi.src=im.src;lb.classList.add('on');});});
+  lb.addEventListener('click',function(){lb.classList.remove('on');});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')lb.classList.remove('on');});
+  var nav=document.getElementById('nav');
+  document.getElementById('menuBtn').addEventListener('click',function(){nav.classList.toggle('open');});
+  toc.addEventListener('click',function(e){if(e.target.closest('a'))nav.classList.remove('open');});
+})();
+</script>
+</body>
+</html>
